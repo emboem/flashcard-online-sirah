@@ -88,7 +88,7 @@ def get_image_base64(image_path):
         return None
 
 # Sesuaikan nama file logo Anda di sini
-logo_filename = "logo_ummul_qura.webp"  # Atau .jpg sesuai file Anda
+logo_filename = "logo_ummul_qura.jpg"  # Atau .jpg sesuai file Anda
 logo_base64 = get_image_base64(logo_filename)
 
 logo_src = ""
@@ -313,3 +313,4 @@ html_code = f"""
 """
 
 components.html(html_code, height=700)
+
