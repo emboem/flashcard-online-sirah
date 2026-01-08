@@ -145,7 +145,7 @@ def get_image_base64(image_path):
     except Exception as e:
         return None
 
-logo_filename = "logo_ummul_qura.webp"
+logo_filename = "logo_ummul_qura.jpg"
 logo_base64 = get_image_base64(logo_filename)
 logo_src = ""
 if logo_base64:
@@ -398,3 +398,4 @@ html_code = f"""
 """
 
 components.html(html_code, height=700)
+
