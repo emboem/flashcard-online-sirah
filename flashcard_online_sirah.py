@@ -79,6 +79,7 @@ json_data = json.dumps(cards_data)
 def get_image_base64(image_path):
     """Membaca file gambar lokal dan mengubahnya menjadi string base64."""
     try:
+        # Coba ekstensi jpg dan webp
         if not os.path.exists(image_path):
             return None
         with open(image_path, "rb") as img_file:
@@ -86,22 +87,19 @@ def get_image_base64(image_path):
     except Exception as e:
         return None
 
-# Load logo
-logo_path = "logo_ummul_qura.jpg" 
-logo_base64 = get_image_base64(logo_path)
+# Sesuaikan nama file logo Anda di sini
+logo_filename = "logo_ummul_qura.webp"  # Atau .jpg sesuai file Anda
+logo_base64 = get_image_base64(logo_filename)
 
-# Logic jika logo tidak ditemukan
 logo_src = ""
 if logo_base64:
-    logo_src = f"data:image/jpg;base64,{logo_base64}"
+    # Deteksi ekstensi untuk mime type yang benar
+    ext = "webp" if logo_filename.endswith("webp") else "jpeg"
+    logo_src = f"data:image/{ext};base64,{logo_base64}"
 
 # ==========================================
 # 4. APLIKASI WEB (HTML/JS/CSS INJECTION)
 # ==========================================
-# Kita menyuntikkan HTML lengkap ke dalam Streamlit.
-# Ini satu-satunya cara untuk mendapatkan animasi flip 3D yang mulus
-# dan tata letak yang presisi tanpa diganggu oleh padding default Streamlit.
-
 html_code = f"""
 <!DOCTYPE html>
 <html lang="id">
@@ -113,24 +111,31 @@ html_code = f"""
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {{ 
             font-family: 'Inter', sans-serif; 
-            background-color: transparent; /* Transparan agar menyatu dengan Streamlit */
+            background-color: transparent; 
             margin: 0; padding: 0;
             display: flex; justify-content: center; align-items: center;
-            height: 650px; /* Tinggi frame HTML */
+            height: 680px;
         }}
 
-        /* --- PERBAIKAN CSS UTAMA (ANTI-TURUN) --- */
+        /* Container 3D - Animasinya dipisah ke sini */
         .card-container-3d {{
             perspective: 1000px;
-            width: 320px;       /* Lebar fix Potrait */
-            height: 520px;      /* Tinggi fix Potrait */
-            position: relative; /* Container utama relative */
+            width: 320px;
+            height: 520px;
+            position: relative;
+            transition: transform 0.2s ease-in-out; /* Animasi untuk navigation squeeze */
+        }}
+        
+        /* Class untuk animasi squeeze saat pindah kartu */
+        .card-container-3d.squeeze {{
+            transform: scale(0.95);
         }}
 
+        /* Inner Card - Khusus untuk Flip */
         .card-inner {{
             width: 100%;
             height: 100%;
-            position: relative; /* Inner juga relative */
+            position: relative;
             text-align: center;
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             transform-style: preserve-3d;
@@ -141,51 +146,30 @@ html_code = f"""
             transform: rotateY(180deg);
         }}
 
-        /* Sisi Kartu: ABSOLUTE terhadap .card-inner */
         .card-face {{
             position: absolute;
-            top: 0; 
-            left: 0;
-            width: 100%; 
-            height: 100%;
-            -webkit-backface-visibility: hidden; /* Safari */
-            backface-visibility: hidden;
+            top: 0; left: 0; width: 100%; height: 100%;
+            -webkit-backface-visibility: hidden; backface-visibility: hidden;
             border-radius: 1.5rem;
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
             padding: 1.5rem;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            overflow: hidden; /* Mencegah konten keluar */
+            overflow: hidden;
         }}
 
-        /* Sisi Depan */
         .card-front {{
-            background-color: white;
-            color: #1f2937;
-            border: 1px solid #e5e7eb;
-            z-index: 2;
+            background-color: white; color: #1f2937; border: 1px solid #e5e7eb; z-index: 2;
         }}
 
-        /* Sisi Belakang */
         .card-back {{
-            background-color: #4338ca;
-            color: white;
-            transform: rotateY(180deg);
-            border: 1px solid #3730a3;
-            z-index: 1;
+            background-color: #4338ca; color: white; transform: rotateY(180deg); border: 1px solid #3730a3; z-index: 1;
         }}
 
-        /* Scrollbar hide */
         .scrollbar-hide::-webkit-scrollbar {{ display: none; }}
         .scrollbar-hide {{ -ms-overflow-style: none; scrollbar-width: none; }}
 
-        /* Tombol Navigasi */
-        .nav-btn {{
-            transition: all 0.2s;
-        }}
-        .nav-btn:active {{
-            transform: scale(0.95);
-        }}
+        .nav-btn {{ transition: all 0.2s; }}
+        .nav-btn:active {{ transform: scale(0.95); }}
     </style>
 </head>
 <body>
@@ -202,21 +186,18 @@ html_code = f"""
             </div>
         </div>
 
-        <div class="card-container-3d" onclick="flipCard()">
+        <div class="card-container-3d" id="card-container" onclick="flipCard()">
             <div class="card-inner" id="flashcard">
                 
                 <div class="card-face card-front">
                     <span class="absolute top-5 left-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Tanya</span>
-                    
                     <div class="flex-1 w-full flex items-center justify-center my-8 overflow-hidden">
                         <div class="w-full max-h-full overflow-y-auto scrollbar-hide flex items-center justify-center">
                              <p class="text-lg font-semibold text-center leading-relaxed px-1" id="card-front-text"></p>
                         </div>
                     </div>
-
                     <div class="w-full flex flex-col items-center justify-end shrink-0 gap-3 pb-1">
                          <img src="{logo_src}" alt="Ummul Qura" class="h-8 object-contain opacity-75 grayscale hover:grayscale-0 transition duration-300">
-                         
                          <div class="text-[9px] uppercase tracking-wider text-gray-400 flex items-center gap-1 font-semibold">
                              <i data-lucide="rotate-cw" class="w-3 h-3"></i> Klik kartu untuk balik
                          </div>
@@ -225,7 +206,6 @@ html_code = f"""
 
                 <div class="card-face card-back">
                     <span class="absolute top-5 left-5 text-[10px] font-bold uppercase tracking-widest text-indigo-200/70">Jawab</span>
-                    
                     <div class="w-full h-full flex items-center justify-center overflow-hidden">
                          <div class="w-full max-h-full overflow-y-auto scrollbar-hide py-4">
                             <p class="text-lg font-medium text-center leading-relaxed" id="card-back-text"></p>
@@ -251,13 +231,12 @@ html_code = f"""
     </div>
 
     <script>
-        // DATA DARI PYTHON DIINJEKSI DI SINI
         let cards = {json_data};
-        
         let currentIndex = 0;
         let isFlipped = false;
 
-        const cardInner = document.getElementById('flashcard');
+        const cardContainer = document.getElementById('card-container'); // Container untuk animasi Scale
+        const cardInner = document.getElementById('flashcard');       // Inner untuk animasi Flip
         const frontText = document.getElementById('card-front-text');
         const backText = document.getElementById('card-back-text');
         const progressText = document.getElementById('progress-text');
@@ -271,7 +250,6 @@ html_code = f"""
             
             btnPrev.disabled = currentIndex === 0;
             btnPrev.style.opacity = currentIndex === 0 ? "0.5" : "1";
-            
             btnNext.disabled = currentIndex === cards.length - 1;
             btnNext.style.opacity = currentIndex === cards.length - 1 ? "0.5" : "1";
             
@@ -299,25 +277,25 @@ html_code = f"""
 
         function changeCard(newIndex) {{
             if (isFlipped) {{
-                flipCard(); // Balik dulu ke depan
+                // Jika kartu sedang terbalik, balikkan dulu
+                flipCard(); 
                 setTimeout(() => {{ 
                     currentIndex = newIndex; 
                     renderCard(); 
-                }}, 300); // Tunggu setengah animasi
+                }}, 300); // Tunggu animasi flip selesai setengah jalan
             }} else {{
-                // Animasi kecil saat geser
-                cardInner.style.transform = "scale(0.95)";
+                // Jika posisi normal, mainkan animasi "squeeze" pada container
+                cardContainer.classList.add('squeeze');
                 setTimeout(() => {{
                     currentIndex = newIndex;
                     renderCard();
-                    cardInner.style.transform = "scale(1)";
-                }}, 150);
+                    cardContainer.classList.remove('squeeze');
+                }}, 200);
             }}
         }}
 
         window.shuffleCards = (e) => {{
             e.stopPropagation();
-            // Fisher-Yates Shuffle
             for (let i = cards.length - 1; i > 0; i--) {{
                 const j = Math.floor(Math.random() * (i + 1));
                 [cards[i], cards[j]] = [cards[j], cards[i]];
@@ -327,7 +305,6 @@ html_code = f"""
             renderCard();
         }};
 
-        // Init
         renderCard();
         lucide.createIcons();
     </script>
@@ -335,6 +312,4 @@ html_code = f"""
 </html>
 """
 
-# Render HTML di dalam Streamlit
-# Height 700 cukup untuk menampung kartu (520px) + kontrol + header
 components.html(html_code, height=700)
